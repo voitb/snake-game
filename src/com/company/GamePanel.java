@@ -3,7 +3,15 @@ package com.company;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Collections;
 import java.util.Random;
+import java.util.Scanner;
+import java.util.ArrayList;
+
+import java.io.File;
+import java.io.FileWriter;
 
 public class GamePanel extends JPanel implements ActionListener {
 
@@ -19,8 +27,9 @@ public class GamePanel extends JPanel implements ActionListener {
     int pointX;
     int pointY;
     char direction = 'D';
-    boolean running = true;
+    boolean running = false;
     boolean paused = false;
+    boolean init = true;
     Timer timer;
     Random random;
     JButton start = new JButton("Play");
@@ -32,7 +41,37 @@ public class GamePanel extends JPanel implements ActionListener {
         this.setBackground(Color.black);
         this.setFocusable(true);
         this.addKeyListener(new KeyAdapterHandler());
-        startGame();
+    }
+
+    public void getScoreToFile(){
+        try {
+            File file = new File("scores.txt");
+            Scanner sc = new Scanner(file);
+            ArrayList<String> list = new ArrayList<String>();
+
+            while (sc.hasNextLine()){
+                list.add(sc.nextLine());
+            }
+
+            list.add(Integer.toString(pointsTaken * 100));
+
+            Collections.reverse(list);
+
+            String str = "";
+
+            for (int i = 0; i < list.size(); i++) {
+                str = str + list.get(i) + "\n";
+            }
+
+            File newTextFile = new File("scores.txt");
+
+            FileWriter fw = new FileWriter(newTextFile);
+            fw.write(str);
+            fw.close();
+
+        } catch (IOException iox) {
+            iox.printStackTrace();
+        }
     }
 
     public void startGame() {
@@ -57,13 +96,14 @@ public class GamePanel extends JPanel implements ActionListener {
     }
 
     public void draw(Graphics g){
-        if(paused){
-            g.setColor(Color.white);
-            g.setFont(new Font("Arial Black", Font.BOLD, 30));
-            FontMetrics metrics = getFontMetrics(g.getFont());
-            g.drawString("Paused", (SCREEN_WIDTH - metrics.stringWidth("Paused"))/2 , SCREEN_HEIGHT / 2);
+        if(init){
+            mainScreen(g);
+            return;
         }
-        if(running && !paused){
+        if(!init && paused){
+           pauseScreen(g);
+        }
+        if(!init && running && !paused){
             g.setColor(Color.red);
             g.fillOval(pointX, pointY, UNIT_SIZE, UNIT_SIZE);
 
@@ -74,7 +114,7 @@ public class GamePanel extends JPanel implements ActionListener {
 
             score(g);
         }
-        if(!running && !paused){
+        if(!init && !running && !paused){
             gameOver(g);
         }
     }
@@ -159,13 +199,37 @@ public class GamePanel extends JPanel implements ActionListener {
         }
     }
 
+    public void pauseScreen(Graphics g){
+        g.setColor(Color.white);
+        g.setFont(new Font("Arial Black", Font.BOLD, 30));
+        FontMetrics metrics = getFontMetrics(g.getFont());
+        g.drawString("Paused", (SCREEN_WIDTH - metrics.stringWidth("Paused"))/2 , SCREEN_HEIGHT / 2);
+    }
+
     public void score(Graphics g){
         g.setColor(Color.white);
         g.setFont(new Font("Arial Black", Font.BOLD, 30));
         FontMetrics metrics = getFontMetrics(g.getFont());
         g.drawString("Score " + pointsTaken * 100, (SCREEN_WIDTH - metrics.stringWidth("Score " + pointsTaken * 100)) , g.getFont().getSize());
+
+        if(running && !paused){
+            g.setFont(new Font("Arial Black", Font.BOLD, 10));
+            FontMetrics metrics2 = getFontMetrics(g.getFont());
+            g.drawString("Press ESC to PAUSE", (SCREEN_WIDTH - metrics2.stringWidth("Press ESC to PAUSE")), SCREEN_HEIGHT - g.getFont().getSize());
+        }
     }
 
+    public void mainScreen(Graphics g){
+        g.setColor(Color.red);
+        g.setFont(new Font("Arial Black", Font.BOLD, 30));
+        FontMetrics metrics = getFontMetrics(g.getFont());
+        g.drawString("Snake - Bartosz Wojtczak", (SCREEN_WIDTH - metrics.stringWidth("Snake - Bartosz Wojtczak"))/2 , SCREEN_HEIGHT / 2);
+
+        g.setColor(Color.yellow);
+        g.setFont(new Font("Arial Black", Font.BOLD, 50));
+        FontMetrics metrics2 = getFontMetrics(g.getFont());
+        g.drawString("Press space to play", (SCREEN_WIDTH - metrics2.stringWidth("Press space to play"))/2 , SCREEN_HEIGHT / 2 + g.getFont().getSize());
+    }
 
     public void gameOver(Graphics g){
         g.setColor(Color.red);
@@ -174,9 +238,21 @@ public class GamePanel extends JPanel implements ActionListener {
         g.drawString("Game Over", (SCREEN_WIDTH - metrics.stringWidth("Game Over"))/2 , SCREEN_HEIGHT / 2);
 
 
+        g.setColor(Color.white);
+        g.setFont(new Font("Arial Black", Font.BOLD, 20));
+        FontMetrics metrics2 = getFontMetrics(g.getFont());
+        g.drawString("Press space to retry", (SCREEN_WIDTH - metrics2.stringWidth("Press space to retry"))/2, (SCREEN_HEIGHT / 2) + 200);
+
+
+        g.setColor(Color.white);
+        g.setFont(new Font("Arial Black", Font.BOLD, 15));
+        FontMetrics metrics3 = getFontMetrics(g.getFont());
+        g.drawString("Press ESC to escape", (SCREEN_WIDTH - metrics3.stringWidth("Press ESC to escape"))/2, (SCREEN_HEIGHT / 2) + 500);
+
+
         score(g);
         RUNNING_SPEED = 60;
-
+        getScoreToFile();
         bodyParts = 3;
         pointsTaken = 0;
         x[bodyParts] = 0;
@@ -188,6 +264,7 @@ public class GamePanel extends JPanel implements ActionListener {
 
         direction = 'D';
     }
+
 
     @Override
     public void actionPerformed(ActionEvent e) {
@@ -224,6 +301,11 @@ public class GamePanel extends JPanel implements ActionListener {
                     direction = 'S';
                     return;
                 case KeyEvent.VK_SPACE:
+                    if(init){
+                        init = false;
+                        startGame();
+                        return;
+                    }
                     if(running) return;
                     startGame();
                     return;
